@@ -1,8 +1,6 @@
 import {
   ALLOWED_COUNTRY_CODES,
   API_HOSTS,
-  FB_ALLOWED_EMAILS,
-  GEAR_SNAPSHOT_URL,
   LVLUP_ECO_THRESHOLD,
   LVLUP_MAX_PLAYER_LVL,
   MM_TIER_TO_CODE,
@@ -13,10 +11,20 @@ import {
   PREFILL_BOOKMARKLET,
   PROXY,
   RECIPES,
-  REFRESH_ENDPOINT,
   SKILL_DISPLAY,
   WAR_ECO_ADVANTAGES_HTML,
 } from './config.js';
+import {
+  trpc,
+  trpcAuth,
+  fetchDirect,
+  fetchByUserId,
+  searchUsernames,
+  loadGearSnapshot,
+  getGearSnapshotState,
+  setGearSnapshotListener,
+} from './api.js';
+import { extractPlayerSkills, unmodeledReservedSP, wrapForWarEco } from './transforms.js';
 import { state } from './state.js';
 import { $, setStatus, clearDebug, renderDebug, escapeHtml } from './utils.js';
 import { analyze, render, renderUserPicker } from './analyze.js';
@@ -13897,469 +13905,28 @@ window["_LIVE_OFFERS"] = {
       "api2.warera.io,api5.warera.io,api6.warera.io,api4.warera.io",
   },
 };
-let _gearSnapshot = null,
-  _gearSnapshotPromise = null,
-  _gearSnapshotError = null;
-function loadGearSnapshot() {
-  if (_gearSnapshot) return Promise["resolve"](_gearSnapshot);
-  if (_gearSnapshotPromise) return _gearSnapshotPromise;
-  return (
-    (_gearSnapshotPromise = fetch(GEAR_SNAPSHOT_URL)
-      ["then"]((_0x4527bb) => {
-        if (!_0x4527bb["ok"]) throw new Error("HTTP " + _0x4527bb["status"]);
-        return _0x4527bb["json"]();
-      })
-      ["then"]((_0x2c2c09) => {
-        return (
-          (_gearSnapshot = _0x2c2c09),
-          (window["_GEAR_SNAPSHOT"] = _0x2c2c09),
-          refreshMinMaxButtonState(),
-          _0x2c2c09
-        );
-      })
-      ["catch"]((_0x3de319) => {
-        ((_gearSnapshotError = _0x3de319), refreshMinMaxButtonState());
-        throw _0x3de319;
-      })),
-    _gearSnapshotPromise
-  );
-}
+// Local mirror — kept in sync via the api.js listener so existing build-panel
+// code can still reference _gearSnapshot directly.
+let _gearSnapshot = null;
 function refreshMinMaxButtonState() {
-  const _0xaba2af = document["querySelectorAll"](
-    '.build-btn[data-build="minmax"], .build-btn[data-build="loot"], .build-btn[data-build="lvlup"]',
-  );
-  _0xaba2af["forEach"]((_0x3af869) => {
-    if (_gearSnapshot)
-      ((_0x3af869["disabled"] = ![]),
-        (_0x3af869["title"] =
-          "Market snapshot loaded · " +
-          _gearSnapshot["transactionsScanned"] +
-          " txns · generated " +
-          _gearSnapshot["generatedAt"]));
-    else
-      _gearSnapshotError
-        ? ((_0x3af869["disabled"] = !![]),
-          (_0x3af869["title"] =
-            "Market snapshot unavailable: " + _gearSnapshotError["message"]))
-        : ((_0x3af869["disabled"] = !![]),
-          (_0x3af869["title"] = "Loading market snapshot…"));
-  });
-}
-loadGearSnapshot()["catch"](() => {});
-let _apiHostIdx = 0x0;
-async function trpc(_0x48d4bc, _0x45dbce, _0x46f8eb = 0x2) {
-  const _0x52e5f8 =
-    "?input=" + encodeURIComponent(JSON["stringify"](_0x45dbce ?? {}));
-  let _0x5edcea;
-  for (let _0x17e2c0 = 0x0; _0x17e2c0 < API_HOSTS["length"]; _0x17e2c0++) {
-    const _0x5e57eb = (_apiHostIdx + _0x17e2c0) % API_HOSTS["length"],
-      _0xa33d6 = API_HOSTS[_0x5e57eb] + "/trpc/" + _0x48d4bc + _0x52e5f8;
-    let _0x2f42fe = ![];
-    for (let _0x3f49aa = 0x0; _0x3f49aa <= _0x46f8eb; _0x3f49aa++) {
-      let _0x371ec4;
-      try {
-        _0x371ec4 = await fetch(_0xa33d6);
-      } catch (_0x3c45fd) {
-        ((_0x3c45fd["kind"] = "network"),
-          (_0x3c45fd["url"] = _0xa33d6),
-          (_0x3c45fd["path"] = _0x48d4bc),
-          (_0x5edcea = _0x3c45fd),
-          (_0x2f42fe = !![]));
-        break;
+  const { snapshot, error } = getGearSnapshotState();
+  _gearSnapshot = snapshot;
+  document.querySelectorAll('.build-btn[data-build="minmax"], .build-btn[data-build="loot"], .build-btn[data-build="lvlup"]')
+    .forEach(btn => {
+      if (snapshot) {
+        btn.disabled = false;
+        btn.title = `Market snapshot loaded · ${snapshot.transactionsScanned} txns · generated ${snapshot.generatedAt}`;
+      } else if (error) {
+        btn.disabled = true;
+        btn.title = 'Market snapshot unavailable: ' + error.message;
+      } else {
+        btn.disabled = true;
+        btn.title = 'Loading market snapshot…';
       }
-      if (_0x371ec4["ok"])
-        return (
-          (_apiHostIdx = _0x5e57eb),
-          (await _0x371ec4["json"]())["result"]?.["data"]
-        );
-      if (_0x371ec4["status"] >= 0x1f4) {
-        const _0x4c37e3 = new Error(_0x48d4bc + " " + _0x371ec4["status"]);
-        ((_0x4c37e3["status"] = _0x371ec4["status"]),
-          (_0x4c37e3["path"] = _0x48d4bc),
-          (_0x4c37e3["kind"] = "network"),
-          (_0x4c37e3["url"] = _0xa33d6),
-          (_0x5edcea = _0x4c37e3),
-          (_0x2f42fe = !![]));
-        break;
-      }
-      if (_0x371ec4["status"] === 0x1ad && _0x3f49aa < _0x46f8eb) {
-        const _0x206bc7 = parseFloat(
-            _0x371ec4["headers"]["get"]("retry-after") || "0",
-          ),
-          _0x1920f5 =
-            _0x206bc7 > 0x0 ? _0x206bc7 * 0x3e8 : 0x5dc * (_0x3f49aa + 0x1);
-        await new Promise((_0x3c2f70) => setTimeout(_0x3c2f70, _0x1920f5));
-        continue;
-      }
-      let _0x31d66b = "";
-      try {
-        const _0x834c37 = await _0x371ec4["json"]();
-        _0x31d66b =
-          _0x834c37?.["error"]?.["message"] ||
-          _0x834c37?.["error"]?.["json"]?.["message"] ||
-          (Array["isArray"](_0x834c37)
-            ? _0x834c37[0x0]?.["error"]?.["json"]?.["message"]
-            : "") ||
-          "";
-      } catch {}
-      const _0x4595b0 = new Error(
-        _0x48d4bc +
-          " " +
-          _0x371ec4["status"] +
-          (_0x31d66b ? ": " + _0x31d66b : ""),
-      );
-      ((_0x4595b0["status"] = _0x371ec4["status"]),
-        (_0x4595b0["path"] = _0x48d4bc),
-        (_0x4595b0["body"] = _0x31d66b));
-      throw _0x4595b0;
-    }
-    if (_0x2f42fe) _apiHostIdx = (_0x5e57eb + 0x1) % API_HOSTS["length"];
-  }
-  throw (
-    _0x5edcea ||
-    Object["assign"](
-      new Error(_0x48d4bc + ": all WarEra API hosts unreachable"),
-      { kind: "network", path: _0x48d4bc },
-    )
-  );
+    });
 }
-async function trpcAuth(_0x4e2517, _0x371902, _0x187299 = 0x2) {
-  const _0x412d01 = PROXY + "/trpc/" + _0x4e2517 + "?batch=1",
-    _0xb132e2 = JSON["stringify"]({ 0x0: _0x371902 ?? {} });
-  for (let _0x39b5b1 = 0x0; _0x39b5b1 <= _0x187299; _0x39b5b1++) {
-    let _0x20c8cf;
-    try {
-      _0x20c8cf = await fetch(_0x412d01, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: _0xb132e2,
-      });
-    } catch (_0x535fc1) {
-      if (_0x39b5b1 < _0x187299) {
-        await new Promise((_0x21426d) =>
-          setTimeout(_0x21426d, 0x190 * (_0x39b5b1 + 0x1)),
-        );
-        continue;
-      }
-      ((_0x535fc1["kind"] = "network"),
-        (_0x535fc1["url"] = _0x412d01),
-        (_0x535fc1["path"] = _0x4e2517));
-      throw _0x535fc1;
-    }
-    if (_0x20c8cf["ok"]) {
-      const _0x224428 = await _0x20c8cf["json"](),
-        _0x51b64a = Array["isArray"](_0x224428) ? _0x224428[0x0] : _0x224428;
-      if (_0x51b64a?.["error"]) {
-        const _0x206f96 = new Error(
-          _0x4e2517 + ": " + (_0x51b64a["error"]?.["message"] || "tRPC error"),
-        );
-        ((_0x206f96["path"] = _0x4e2517),
-          (_0x206f96["body"] = _0x51b64a["error"]?.["message"] || ""));
-        throw _0x206f96;
-      }
-      return _0x51b64a?.["result"]?.["data"];
-    }
-    if (_0x20c8cf["status"] >= 0x1f4 && _0x39b5b1 < _0x187299) {
-      await new Promise((_0x373c93) =>
-        setTimeout(_0x373c93, 0x190 * (_0x39b5b1 + 0x1)),
-      );
-      continue;
-    }
-    if (_0x20c8cf["status"] === 0x1ad && _0x39b5b1 < _0x187299) {
-      const _0x4bf251 = parseFloat(
-          _0x20c8cf["headers"]["get"]("retry-after") || "0",
-        ),
-        _0x1a46a1 =
-          _0x4bf251 > 0x0 ? _0x4bf251 * 0x3e8 : 0x5dc * (_0x39b5b1 + 0x1);
-      await new Promise((_0x2f60cd) => setTimeout(_0x2f60cd, _0x1a46a1));
-      continue;
-    }
-    let _0x96f172 = "";
-    try {
-      const _0x2ec467 = await _0x20c8cf["json"](),
-        _0x328f6a = Array["isArray"](_0x2ec467) ? _0x2ec467[0x0] : _0x2ec467;
-      _0x96f172 =
-        _0x328f6a?.["error"]?.["message"] ||
-        _0x328f6a?.["error"]?.["json"]?.["message"] ||
-        "";
-    } catch {}
-    const _0x18648f = new Error(
-      _0x4e2517 +
-        " " +
-        _0x20c8cf["status"] +
-        (_0x96f172 ? ": " + _0x96f172 : ""),
-    );
-    ((_0x18648f["status"] = _0x20c8cf["status"]),
-      (_0x18648f["path"] = _0x4e2517),
-      (_0x18648f["body"] = _0x96f172));
-    throw _0x18648f;
-  }
-}
-async function fetchAllCompanyIds(_0x530de8) {
-  const _0x319ffe = 0x64,
-    _0x167929 = [],
-    _0x195c69 = new Set();
-  let _0x566f0b,
-    _0x4ba3b7 = 0x0,
-    _0x366c71 = ![];
-  while (!![]) {
-    let _0x51e4dc;
-    try {
-      const _0x5b25df = _0x566f0b
-        ? { userId: _0x530de8, perPage: _0x319ffe, cursor: _0x566f0b }
-        : { userId: _0x530de8, perPage: _0x319ffe };
-      _0x51e4dc = await trpc("company.getCompanies", _0x5b25df);
-    } catch (_0x598ad1) {
-      if (
-        _0x598ad1["status"] === 0x1f4 &&
-        /movedUpAt|Cast to date failed/i["test"](
-          _0x598ad1["body"] || _0x598ad1["message"] || "",
-        )
-      )
-        return (
-          console["warn"](
-            "company.getCompanies pagination broke at page " +
-              (_0x4ba3b7 + 0x1) +
-              "; collected " +
-              _0x167929["length"] +
-              ".",
-          ),
-          (_0x167929["truncated"] = !![]),
-          _0x167929
-        );
-      throw _0x598ad1;
-    }
-    _0x4ba3b7++;
-    for (const _0xea2d95 of _0x51e4dc?.["items"] || []) {
-      !_0x195c69["has"](_0xea2d95) &&
-        (_0x195c69["add"](_0xea2d95), _0x167929["push"](_0xea2d95));
-    }
-    if (
-      !_0x51e4dc?.["nextCursor"] ||
-      typeof _0x51e4dc["nextCursor"] !== "string"
-    )
-      break;
-    if (
-      _0x51e4dc["nextCursor"]["startsWith"]("undefined|") ||
-      _0x51e4dc["nextCursor"]["includes"]("|undefined")
-    ) {
-      ((_0x366c71 = !![]),
-        console["warn"](
-          "company.getCompanies pagination unreachable at page " +
-            (_0x4ba3b7 + 0x1) +
-            " (broken server cursor); returning " +
-            _0x167929["length"] +
-            " companies. The user may own more that WarEra's API won't list.",
-        ));
-      break;
-    }
-    _0x566f0b = _0x51e4dc["nextCursor"];
-  }
-  if (_0x366c71) _0x167929["truncated"] = !![];
-  return _0x167929;
-}
-export async function fetchDirect(_0x17807a) {
-  setStatus("Searching " + _0x17807a + "...");
-  const _0x291207 = await trpc("search.searchAnything", {
-      searchText: _0x17807a,
-    }),
-    _0x18e5ef = _0x291207?.["userIds"] || [];
-  if (!_0x18e5ef["length"])
-    return {
-      error:
-        'No user found for "' +
-        _0x17807a +
-        '". Check the spelling or try a shorter prefix.',
-    };
-  const _0x471ea6 = (
-    await Promise["all"](
-      _0x18e5ef["slice"](0x0, 0x5)["map"](async (_0xdd5b07) => {
-        try {
-          const _0x305a5a = await trpc("user.getUserLite", {
-            userId: _0xdd5b07,
-          });
-          return _0x305a5a
-            ? { id: _0x305a5a["_id"], username: _0x305a5a["username"] }
-            : null;
-        } catch {
-          return null;
-        }
-      }),
-    )
-  )["filter"](Boolean);
-  if (!_0x471ea6["length"])
-    return { error: 'No user found for "' + _0x17807a + '"' };
-  const _0x47b560 = _0x17807a["toLowerCase"](),
-    _0x53c4ef = _0x471ea6["find"](
-      (_0x171eff) => _0x171eff["username"]["toLowerCase"]() === _0x47b560,
-    );
-  if (_0x471ea6["length"] === 0x1) return fetchByUserId(_0x471ea6[0x0]["id"]);
-  if (_0x53c4ef) return fetchByUserId(_0x53c4ef["id"]);
-  return { needsPick: !![], query: _0x17807a, candidates: _0x471ea6 };
-}
-export async function fetchByUserId(_0x1bb503) {
-  setStatus("Carregando usuário, país e preços...");
-  const [_0xc475fb, _0x3bffea, _0xef9e3d] = await Promise["all"]([
-      trpc("user.getUserById", { userId: _0x1bb503 })["catch"](() => null),
-      trpc("country.getAllCountries")["catch"](() => null),
-      trpc("itemTrading.getPrices", {}),
-    ]),
-    _0x1a33a1 = _0x3bffea?.["find"](
-      (_0xaf4e86) => _0xaf4e86["_id"] === _0xc475fb?.["country"],
-    );
-  if (!_0x1a33a1 || !ALLOWED_COUNTRY_CODES["has"](_0x1a33a1["code"]))
-    return {
-      error:
-        (_0xc475fb?.["username"] || "Player") +
-        " is from " +
-        (_0x1a33a1?.["name"] || "an unrecognised country") +
-        " — this tool is restricted to allied countries.",
-    };
-  setStatus(
-    "Carregando empresas de " + (_0xc475fb?.["username"] || "usuário") + "...",
-  );
-  const _0x1283c0 = await fetchAllCompanyIds(_0x1bb503);
-  let _0x5ec4c9 = null;
-  if (_0xc475fb?.["company"]) {
-    const [_0x43156, _0x3eff20, _0x161413] = await Promise["all"]([
-        trpc("company.getById", { companyId: _0xc475fb["company"] })["catch"](
-          () => null,
-        ),
-        trpcAuth("worker.getWorkers", { companyId: _0xc475fb["company"] })[
-          "catch"
-        ](() => null),
-        trpc("company.getProductionBonus", { companyId: _0xc475fb["company"] })[
-          "catch"
-        ](() => null),
-      ]),
-      _0x42d1f4 = _0x3eff20?.["workers"]?.["find"](
-        (_0x1fc020) => _0x1fc020["user"] === _0x1bb503,
-      ),
-      _0xe7c443 = _0x43156?.["region"]
-        ? await trpc("region.getById", { regionId: _0x43156["region"] })[
-            "catch"
-          ](() => null)
-        : null,
-      _0x1cdc1e = _0xe7c443?.["country"],
-      _0x403708 =
-        _0x3bffea?.["find"]((_0x37e505) => _0x37e505["_id"] === _0x1cdc1e) ||
-        null;
-    if (_0x42d1f4) {
-      const _0x2c40d4 = _0x403708?.["taxes"]?.["income"] ?? 0x0;
-      _0x5ec4c9 = {
-        companyId: _0xc475fb["company"],
-        companyName: _0x43156?.["name"] || "(unknown)",
-        countryName: _0x403708?.["name"] || "(unknown)",
-        countryCode: _0x403708?.["code"] || "",
-        grossWage: _0x42d1f4["wage"] || 0x0,
-        fidelity: _0x42d1f4["fidelity"] || 0x0,
-        incomeTaxPct: _0x2c40d4,
-        netWage: (_0x42d1f4["wage"] || 0x0) * (0x1 - _0x2c40d4 / 0x64),
-        productionBonus: _0x161413?.["total"] || 0x0,
-      };
-    }
-  }
-  const _0x28e1a6 = _0x1283c0 || [],
-    _0x205a57 = !!_0x1283c0?.["truncated"];
-  if (!_0x28e1a6["length"])
-    return {
-      userId: _0x1bb503,
-      user: _0xc475fb,
-      companies: [],
-      prices: _0xef9e3d,
-      employer: _0x5ec4c9,
-      companiesTruncated: _0x205a57,
-    };
-  setStatus("Buscando detalhes de " + _0x28e1a6["length"] + " empresas...");
-  const _0x4d1f61 = await Promise["all"](
-    _0x28e1a6["map"](async (_0x434b93) => {
-      const [_0x51b398, _0x5a37e2, _0x23c83f] = await Promise["all"]([
-          trpc("company.getById", { companyId: _0x434b93 })["catch"](
-            () => null,
-          ),
-          trpc("company.getProductionBonus", { companyId: _0x434b93 })["catch"](
-            () => null,
-          ),
-          trpcAuth("worker.getWorkers", { companyId: _0x434b93 })["catch"](
-            () => null,
-          ),
-        ]),
-        _0x97c2c2 = _0x23c83f?.["workers"] || [],
-        _0xe137a7 = await Promise["all"](
-          _0x97c2c2["map"](async (_0x423b4b) => {
-            const _0x41bd79 = await trpc("user.getUserLite", {
-              userId: _0x423b4b["user"],
-            })["catch"](() => null);
-            return {
-              ..._0x423b4b,
-              username:
-                _0x41bd79?.["username"] || _0x423b4b["user"]["slice"](-0x6),
-              level: _0x41bd79?.["leveling"]?.["level"] || 0x0,
-              energy: _0x41bd79?.["skills"]?.["energy"]?.["total"] || 0x0,
-              production:
-                _0x41bd79?.["skills"]?.["production"]?.["total"] || 0x0,
-            };
-          }),
-        ),
-        _0x3ea440 = _0x51b398?.["disabledAt"] || null;
-      return {
-        id: _0x434b93,
-        detail: _0x51b398,
-        bonus: _0x5a37e2,
-        workers: _0xe137a7,
-        disabledAt: _0x3ea440,
-        aeActive: !_0x3ea440,
-      };
-    }),
-  );
-  return {
-    userId: _0x1bb503,
-    user: _0xc475fb,
-    companies: _0x4d1f61,
-    prices: _0xef9e3d,
-    employer: _0x5ec4c9,
-    companiesTruncated: _0x205a57,
-  };
-}
-export async function fetchViaPhp(_0x28e55e) {
-  const _0x524fc1 = await fetch(
-    "api.php?username=" + encodeURIComponent(_0x28e55e),
-  );
-  if (!_0x524fc1["ok"]) throw new Error("PHP backend unavailable");
-  return _0x524fc1["json"]();
-}
-($("goBtn")["addEventListener"]("click", () => analyze()),
-  $("username")["addEventListener"]("keydown", (_0x5e5673) => {
-    if (_0x5e5673["key"] === "Enter") analyze();
-  }));
-async function searchUsernames(_0x1819f5) {
-  if (!_0x1819f5["trim"]()) return [];
-  const _0x5021f7 = await trpc("search.searchAnything", {
-      searchText: _0x1819f5,
-    }),
-    _0x1d6ac1 = _0x5021f7?.["userIds"] || [];
-  if (!_0x1d6ac1["length"]) return [];
-  return (
-    await Promise["all"](
-      _0x1d6ac1["slice"](0x0, 0x3)["map"](async (_0x3ca8ae) => {
-        try {
-          const _0x10b509 = await trpc("user.getUserLite", {
-            userId: _0x3ca8ae,
-          });
-          return _0x10b509
-            ? {
-                id: _0x10b509["_id"],
-                username: _0x10b509["username"],
-                level: _0x10b509["leveling"]?.["level"] || 0x0,
-              }
-            : null;
-        } catch {
-          return null;
-        }
-      }),
-    )
-  )["filter"](Boolean);
-}
+setGearSnapshotListener(refreshMinMaxButtonState);
+loadGearSnapshot().catch(() => {});
 function showDropdownMessage(_0x27dac2, _0x5c3612 = ![]) {
   const _0x5a0e97 = $("usernameDropdown");
   ((_0x5a0e97["innerHTML"] =
@@ -14484,47 +14051,6 @@ function buildOptimizerUserData(_0x1fa024) {
         }
       : null,
   };
-}
-function unmodeledReservedSP(_0x27a953) {
-  const _0x2670fe = new Set(
-    PLAYER_API_SKILL_MAP["map"]((_0x430115) => _0x430115[0x0]),
-  );
-  let _0x25278a = 0x0;
-  for (const [_0x13e402, _0x3db238] of Object["entries"](
-    _0x27a953?.["skills"] || {},
-  )) {
-    if (_0x2670fe["has"](_0x13e402)) continue;
-    const _0x10472b = Number((_0x3db238 && _0x3db238["level"]) ?? 0x0);
-    _0x25278a += (_0x10472b * (_0x10472b + 0x1)) / 0x2;
-  }
-  return _0x25278a;
-}
-function extractPlayerSkills(_0x4f6a58) {
-  const _0x35ae40 = {},
-    _0x8bcd6a = _0x4f6a58?.["skills"] || {};
-  for (const [_0x31da8f, _0x4c273e] of PLAYER_API_SKILL_MAP) {
-    _0x35ae40[_0x4c273e] = Number(_0x8bcd6a[_0x31da8f]?.["level"] ?? 0x0);
-  }
-  return _0x35ae40;
-}
-function buildHusaraiPayload(_0x164f33, _0x131033) {
-  const _0x11f067 = OPT["buildPresetParams"](_0x164f33, _0x131033);
-  return {
-    foodType: _0x11f067["foodType"],
-    spentLimit: Number(_0x11f067["spentLimit"]["toFixed"](0x2)),
-    companyProfit: Number(_0x11f067["companyProfit"]["toFixed"](0x2)),
-    ppSelfWorkBonus: Number(_0x11f067["ppSelfWorkBonus"]["toFixed"](0x4)),
-    ppSelfWorkPrice: Number(_0x11f067["ppSelfWorkPrice"]["toFixed"](0x3)),
-    gearTiers: _0x11f067["gearTiers"],
-    minSkills: _0x11f067["minSkills"],
-    maxSkills: _0x11f067["maxSkills"],
-  };
-}
-function wrapForWarEco(_0xd62ebd, _0x3487c0) {
-  if (_0x3487c0 !== "warEco") return _0xd62ebd;
-  return (
-    '<div class="we-layout">' + _0xd62ebd + WAR_ECO_ADVANTAGES_HTML + "</div>"
-  );
 }
 let _optWorker = null,
   _optRunId = 0x0;
@@ -18150,107 +17676,3 @@ function renderBreakEvenResult(_0x10637c, _0x380969, _0x34b8af) {
         _0x258ab7["code"]["toUpperCase"]() +
         ") isn't on the list."));
   })());
-let _fbUser = null;
-firebase["initializeApp"]({
-  apiKey: "AIzaSyCi_9bGs_E6MGQWwPHcmwP85eEzh8rH0sc",
-  authDomain: "wareranl-powerprojection.firebaseapp.com",
-  projectId: "wareranl-powerprojection",
-  storageBucket: "wareranl-powerprojection.firebasestorage.app",
-  messagingSenderId: "479343227859",
-  appId: "1:479343227859:web:153c4a6132fbcdb2827526",
-});
-const _fbAuth = firebase["auth"](),
-  _fbProvider = new firebase["auth"]["GoogleAuthProvider"]();
-function isFbAllowed() {
-  return _fbUser && FB_ALLOWED_EMAILS["includes"](_fbUser["email"]);
-}
-function renderAuthState() {
-  const _0x51ce09 = document["getElementById"]("authStatus"),
-    _0x252715 = document["getElementById"]("authBtn"),
-    _0x198ea7 = document["getElementById"]("refreshPricesBtn"),
-    _0x57062f = document["querySelector"]('.build-btn[data-build="loot"]');
-  if (_fbUser) {
-    const _0x20c5df = isFbAllowed();
-    ((_0x51ce09["textContent"] =
-      _fbUser["email"] + (_0x20c5df ? " ✓" : " (read-only)")),
-      (_0x51ce09["style"]["color"] = _0x20c5df ? "#22c55e" : "#f59e0b"),
-      (_0x252715["textContent"] = "Sign out"));
-    if (_0x198ea7) _0x198ea7["style"]["display"] = _0x20c5df ? "" : "none";
-    if (_0x57062f) _0x57062f["style"]["display"] = _0x20c5df ? "" : "none";
-  } else {
-    ((_0x51ce09["textContent"] = "Not signed in"),
-      (_0x51ce09["style"]["color"] = "#8b8fa3"),
-      (_0x252715["textContent"] = "Sign in"));
-    if (_0x198ea7) _0x198ea7["style"]["display"] = "none";
-    if (_0x57062f) _0x57062f["style"]["display"] = "none";
-  }
-}
-(_fbAuth["onAuthStateChanged"]((_0x2faa2a) => {
-  ((_fbUser = _0x2faa2a), renderAuthState());
-}),
-  document["getElementById"]("authBtn")["addEventListener"](
-    "click",
-    async () => {
-      try {
-        if (_fbUser) await _fbAuth["signOut"]();
-        else await _fbAuth["signInWithPopup"](_fbProvider);
-      } catch (_0x25490e) {
-        alert("Auth error: " + _0x25490e["message"]);
-      }
-    },
-  ),
-  document["getElementById"]("refreshPricesBtn")["addEventListener"](
-    "click",
-    async () => {
-      const _0x234974 = document["getElementById"]("refreshPricesBtn");
-      if (!isFbAllowed()) {
-        alert("Not signed in as an allowed admin.");
-        return;
-      }
-      const _0x46498d = _0x234974["textContent"];
-      ((_0x234974["disabled"] = !![]),
-        (_0x234974["textContent"] = "🔄 Refreshing…"));
-      try {
-        const _0x524584 = await _fbUser["getIdToken"](),
-          _0x18aa63 = await fetch(REFRESH_ENDPOINT, {
-            method: "POST",
-            headers: { Authorization: "Bearer " + _0x524584 },
-          });
-        if (!_0x18aa63["ok"]) {
-          const _0x13d704 = await _0x18aa63["text"]();
-          throw new Error(
-            "HTTP " +
-              _0x18aa63["status"] +
-              ": " +
-              _0x13d704["slice"](0x0, 0xc8),
-          );
-        }
-        ((_0x234974["textContent"] = "🔄 Snapshot building…"),
-          await new Promise((_0x270b34) => setTimeout(_0x270b34, 0x61a8)));
-        const _0x14b694 = await fetch(
-          GEAR_SNAPSHOT_URL + "?cb=" + Date["now"](),
-          { cache: "no-store" },
-        );
-        if (!_0x14b694["ok"])
-          throw new Error("snapshot refetch HTTP " + _0x14b694["status"]);
-        const _0x30d1d3 = await _0x14b694["json"]();
-        ((_gearSnapshot = _0x30d1d3),
-          (window["_GEAR_SNAPSHOT"] = _0x30d1d3),
-          refreshMinMaxButtonState(),
-          _buildCache["clear"](),
-          (_minMaxStarted = ![]),
-          (_lootStarted = ![]),
-          (_lvlUpStarted = ![]),
-          (_0x234974["textContent"] = "✓ Updated"),
-          setTimeout(() => {
-            ((_0x234974["textContent"] = _0x46498d),
-              (_0x234974["disabled"] = ![]));
-          }, 0x7d0));
-      } catch (_0x3ad2ca) {
-        (console["error"]("refresh failed", _0x3ad2ca),
-          alert("Refresh failed: " + _0x3ad2ca["message"]),
-          (_0x234974["textContent"] = _0x46498d),
-          (_0x234974["disabled"] = ![]));
-      }
-    },
-  ));

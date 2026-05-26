@@ -4,8 +4,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WarEra — Otimizador de Lucro e Build</title>
 <link rel="stylesheet" href="./css/styles.css">
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <!-- html2canvas: DOM→PNG for the "Export image" buttons. CDN (tool already needs net);
      not obfuscated since build.js only processes the last <script> block. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -13,18 +11,13 @@
 <body>
 
 <div class="container">
-    <div class="auth-bar">
-        <button id="refreshPricesBtn" type="button" class="build-btn build-btn-refresh" style="display:none;" title="Forçar atualização do mercado (somente admin autenticado)">🔄 Atualizar preços</button>
-        <span id="authStatus" style="color: rgb(139, 143, 163);">Não autenticado</span>
-        <button id="authBtn" type="button">Entrar</button>
-    </div>
     <h1>WarEra — Otimizador de Lucro e Build</h1>
     <p class="subtitle">Lucratividade por item e diária de todas as empresas de um jogador.</p>
 
     <div class="controls">
         <label for="username">Nome de usuário</label>
         <div class="username-wrap">
-            <input type="text" id="username" placeholder="ex: Juniiya" value="" autocomplete="off">
+            <input type="text" id="username" placeholder="ex: Lubu" value="" autocomplete="off">
             <ul id="usernameDropdown" class="username-dropdown" hidden=""></ul>
         </div>
         <button id="goBtn">Analisar</button>
@@ -36,7 +29,7 @@
 
     <div id="buildBar" class="build-bar" style="display:none;">
         <button class="build-btn build-btn-new" data-build="minmax" title="Snapshot de mercado carregado · 6000 txns · gerado em 2026-05-13T07:41:39.482Z">🎯 Builds Min-Max (mercado real)</button>
-        <button class="build-btn build-btn-new" data-build="loot" style="display:none;" title="Snapshot de mercado carregado · 6000 txns · gerado em 2026-05-13T07:41:39.482Z">💰 Loot Build (renda máxima)</button>
+        <button class="build-btn build-btn-new" data-build="loot" title="Carregando preços de equipamentos...">💰 Loot Build (renda máxima)</button>
         <button class="build-btn build-btn-new" data-build="lvlup" title="Snapshot de mercado carregado · 6000 txns · gerado em 2026-05-13T07:41:39.482Z">🎚️ Calculadora de UP</button>
     </div>
     <div id="buildPanel"></div>

@@ -43,9 +43,6 @@ export const NAMES = {
     concrete: "Concrete",
   };
 
-export const GEAR_SNAPSHOT_URL = 
-    "https://warera-proxy.stuitjejuniya.workers.dev/gear-ranges";
-
 export const API_HOSTS = ["https://api2.warera.io"];
 
 export const PROXY = "https://warera-proxy.stuitjejuniya.workers.dev";
@@ -173,7 +170,3 @@ export const LVLUP_MAX_PLAYER_LVL = 0x64;
 
 export const MM_TOP_K_VARIANTS = 0x6;
 
-export const FB_ALLOWED_EMAILS = ["stuitjejuniya@gmail.com"];
-
-export const REFRESH_ENDPOINT = 
-    "https://warera-proxy.stuitjejuniya.workers.dev/admin/refresh-gear-ranges";

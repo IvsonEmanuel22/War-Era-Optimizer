@@ -1,0 +1,50 @@
+{
+  "gun": {
+    "common":    { "attackMin": 21, "attackMax": 40, "cChanceMin": 0.01, "cChanceMax": 0.05 },
+    "uncommon":  { "attackMin": 51, "attackMax": 60, "cChanceMin": 0.06, "cChanceMax": 0.1 },
+    "rare":      { "attackMin": 71, "attackMax": 90, "cChanceMin": 0.11, "cChanceMax": 0.15 },
+    "epic":      { "attackMin": 101, "attackMax": 130, "cChanceMin": 0.16, "cChanceMax": 0.2 },
+    "legendary": { "attackMin": 141, "attackMax": 170, "cChanceMin": 0.26, "cChanceMax": 0.35 },
+    "mythic":    { "attackMin": 221, "attackMax": 300, "cChanceMin": 0.41, "cChanceMax": 0.5 }
+  },
+  "helmet": {
+    "common":    { "cDmgMin": 0.01, "cDmgMax": 0.15 },
+    "uncommon":  { "cDmgMin": 0.16, "cDmgMax": 0.3 },
+    "rare":      { "cDmgMin": 0.31, "cDmgMax": 0.5 },
+    "epic":      { "cDmgMin": 0.71, "cDmgMax": 0.9 },
+    "legendary": { "cDmgMin": 0.91, "cDmgMax": 1.1 },
+    "mythic":    { "cDmgMin": 1.21, "cDmgMax": 1.5 }
+  },
+  "chest": {
+    "common":    { "armorMin": 1, "armorMax": 5 },
+    "uncommon":  { "armorMin": 6, "armorMax": 10 },
+    "rare":      { "armorMin": 11, "armorMax": 15 },
+    "epic":      { "armorMin": 21, "armorMax": 30 },
+    "legendary": { "armorMin": 36, "armorMax": 50 },
+    "mythic":    { "armorMin": 56, "armorMax": 70 }
+  },
+  "pant": {
+    "common":    { "armorMin": 1, "armorMax": 5 },
+    "uncommon":  { "armorMin": 6, "armorMax": 10 },
+    "rare":      { "armorMin": 11, "armorMax": 15 },
+    "epic":      { "armorMin": 21, "armorMax": 30 },
+    "legendary": { "armorMin": 36, "armorMax": 50 },
+    "mythic":    { "armorMin": 56, "armorMax": 70 }
+  },
+  "glove": {
+    "common":    { "precisionMin": 0.01, "precisionMax": 0.05 },
+    "uncommon":  { "precisionMin": 0.06, "precisionMax": 0.1 },
+    "rare":      { "precisionMin": 0.11, "precisionMax": 0.15 },
+    "epic":      { "precisionMin": 0.21, "precisionMax": 0.25 },
+    "legendary": { "precisionMin": 0.31, "precisionMax": 0.4 },
+    "mythic":    { "precisionMin": 0.51, "precisionMax": 0.6 }
+  },
+  "boot": {
+    "common":    { "dodgeMin": 1, "dodgeMax": 5 },
+    "uncommon":  { "dodgeMin": 6, "dodgeMax": 10 },
+    "rare":      { "dodgeMin": 11, "dodgeMax": 15 },
+    "epic":      { "dodgeMin": 21, "dodgeMax": 25 },
+    "legendary": { "dodgeMin": 31, "dodgeMax": 40 },
+    "mythic":    { "dodgeMin": 51, "dodgeMax": 60 }
+  }
+}
