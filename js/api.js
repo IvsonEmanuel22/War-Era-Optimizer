@@ -2,7 +2,6 @@ import { API_HOSTS, PROXY, MM_TIER_TO_CODE, ALLOWED_COUNTRY_CODES } from './conf
 import { setStatus } from './utils.js';
 
 // ─── Concurrency limiter ──────────────────────────────────────────────────────
-// Limits how many async tasks run in parallel, preventing API rate-limit hits.
 
 function pLimit(concurrency) {
   let active = 0;
@@ -21,6 +20,9 @@ function pLimit(concurrency) {
 }
 
 // ─── tRPC core ────────────────────────────────────────────────────────────────
+// 429 handling: exponential backoff with up to MAX_429_RETRIES attempts.
+// 1.5s → 3s → 6s → 12s → 24s covers the full 60s rate-limit window.
+const MAX_429_RETRIES = 5;
 
 let _apiHostIdx = 0;
 
@@ -33,6 +35,7 @@ export async function trpc(path, input, retries = 2) {
     const url = API_HOSTS[hostIdx] + '/trpc/' + path + query;
     let networkFailed = false;
 
+    let retries429 = 0;
     for (let attempt = 0; attempt <= retries; attempt++) {
       let res;
       try {
@@ -62,9 +65,10 @@ export async function trpc(path, input, retries = 2) {
         break;
       }
 
-      if (res.status === 429 && attempt < retries) {
+      if (res.status === 429 && retries429 < MAX_429_RETRIES) {
         const retryAfter = parseFloat(res.headers.get('retry-after') || '0');
-        const delay = retryAfter > 0 ? retryAfter * 1000 : 1500 * (attempt + 1);
+        const delay = retryAfter > 0 ? retryAfter * 1000 : 1500 * Math.pow(2, retries429);
+        retries429++;
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
@@ -270,15 +274,20 @@ export async function fetchByUserId(userId) {
       const regionCountry = countries?.find(c => c._id === region?.country) ?? null;
       const incomeTax = regionCountry?.taxes?.income ?? 0;
 
+      const gross    = selfWorker.wage     || 0;
+      const fidelity = selfWorker.fidelity || 0;
+      // Worker pays tax from their own wallet; fidelity affects only production, not wages.
+      const netWagePerPP = gross * (1 - incomeTax / 100);
+
       employer = {
         companyId:       user.company,
         companyName:     company?.name  || '(unknown)',
         countryName:     regionCountry?.name || '(unknown)',
         countryCode:     regionCountry?.code || '',
-        grossWage:       selfWorker.wage     || 0,
-        fidelity:        selfWorker.fidelity || 0,
+        grossWage:       gross,
+        netWagePerPP,
+        fidelity,
         incomeTaxPct:    incomeTax,
-        netWage:         (selfWorker.wage || 0) * (1 - incomeTax / 100),
         productionBonus: bonus?.total || 0,
       };
     }
@@ -304,24 +313,31 @@ export async function fetchByUserId(userId) {
         trpcAuth('worker.getWorkers',      { companyId: coId }).catch(() => null),
       ]);
 
-      const enrichedWorkers = await Promise.all(
-        (workersData?.workers || []).map(async w => {
-          const userLite = await trpc('user.getUserLite', { userId: w.user }).catch(() => null);
-          return {
-            ...w,
-            username:   userLite?.username                  || w.user.slice(-6),
-            level:      userLite?.leveling?.level           || 0,
-            energy:     userLite?.skills?.energy?.total     || 0,
-            production: userLite?.skills?.production?.total || 0,
-          };
-        }),
-      );
+      const [companyRegion, enrichedWorkers] = await Promise.all([
+        detail?.region
+          ? trpc('region.getById', { regionId: detail.region }).catch(() => null)
+          : null,
+        Promise.all(
+          (workersData?.workers || []).map(async w => {
+            const userLite = await trpc('user.getUserLite', { userId: w.user }).catch(() => null);
+            return {
+              ...w,
+              username:   userLite?.username                  || w.user.slice(-6),
+              level:      userLite?.leveling?.level           || 0,
+              energy:     userLite?.skills?.energy?.total     || 0,
+              production: userLite?.skills?.production?.total || 0,
+            };
+          }),
+        ),
+      ]);
+      const coIncomeTax = countries?.find(c => c._id === companyRegion?.country)?.taxes?.income ?? 0;
+      const workersWithTax = enrichedWorkers.map(w => ({ ...w, incomeTax: coIncomeTax }));
 
       return {
         id:         coId,
         detail,
         bonus,
-        workers:    enrichedWorkers,
+        workers:    workersWithTax,
         disabledAt: detail?.disabledAt || null,
         aeActive:   !detail?.disabledAt,
       };

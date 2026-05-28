@@ -2,7 +2,7 @@ import { NAMES } from "./config.js";
 import { state } from "./state.js";
 import { $, setStatus, clearDebug, renderDebug, escapeHtml } from "./utils.js";
 import { fetchByUserId, fetchDirect } from "./api.js";
-import { _buildCache, renderBuildPanel } from "./_recovered.js";
+import { _buildCache, renderBuildPanel } from "./ui/buildPanel.js";
 import { PlayerEconomy } from "./models/PlayerEconomy.js";
 
 export async function analyze(userId, usernameArg) {
@@ -193,8 +193,7 @@ export function render(data) {
     ? `<div class="stat-card">
         <div class="stat-label">Lucro energia / dia</div>
         <div class="stat-value ${signCss(energyProfitDay)}">${fmt(energyProfitDay)}</div>
-        <div class="stat-sub">${fmt(employer.netWage, 3)} líq. em ${escapeHtml(employer.companyName)}
-          (bônus ${employer.productionBonus.toFixed(1)}% · imposto ${employer.incomeTaxPct}% · ${escapeHtml(employer.countryName)})</div>
+        <div class="stat-sub">${fmt(employer.netWagePerPP, 3)} líquido/PP · bruto ${fmt(employer.grossWage, 3)} − imposto ${employer.incomeTaxPct}% (fid. ${employer.fidelity}%) · ${escapeHtml(employer.companyName)} · ${escapeHtml(employer.countryName)}</div>
       </div>`
     : `<div class="stat-card">
         <div class="stat-label">Lucro energia / dia</div>

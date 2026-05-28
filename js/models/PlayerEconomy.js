@@ -220,7 +220,7 @@ export class PlayerEconomy {
   // Renda de energia (trabalhar como empregado) — null se sem empregador
   get energyProfit() {
     if (!this.employer) return null;
-    return (this.#energySkill / 10) * this.#productionSkill * 2.4 * this.employer.netWage;
+    return (this.#energySkill / 10) * this.#productionSkill * 2.4 * this.employer.netWagePerPP;
   }
 
   // ─── Totais agregados ────────────────────────────────────────────────────

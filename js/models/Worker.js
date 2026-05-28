@@ -1,7 +1,8 @@
 // Um trabalhador em uma empresa.
 // energy e production são skills do jogador-trabalhador (vêm enriquecidos pela API).
-// Salário é pago apenas sobre o PP base (fidelidade e bônus da empresa aumentam
-// produção mas não o custo salarial).
+// Fidelidade e bônus da empresa aumentam PP de produção (itens/dia), mas salário
+// é pago apenas sobre o PP base (energy × production × WORKER_SCALE).
+// O empregador paga salário bruto apenas; imposto é descontado da carteira do trabalhador pelo jogo.
 
 const WORKER_SCALE = 0.24; // energy/10 actions per full bar × 2.4 bars/day
 
