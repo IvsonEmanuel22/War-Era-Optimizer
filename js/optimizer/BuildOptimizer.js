@@ -1,4 +1,4 @@
-import { SKILL_NAMES, COMBAT_SKILLS, ECO_SKILLS, DOMINANT_DEFAULT, MAX_SKILL_LEVEL, DEFAULT_PRESET_MAX_SKILLS } from './constants.js';
+import { SKILL_NAMES, COMBAT_SKILLS, DOMINANT_DEFAULT, MAX_SKILL_LEVEL, DEFAULT_PRESET_MAX_SKILLS } from './constants.js';
 import { buildGearAndSets, buildFood } from './items.js';
 import { writeAttributes, evalBuild, getWeeklyCases } from './DamageFormula.js';
 import { optimizeSP } from './SPOptimizer.js';
@@ -63,20 +63,20 @@ export function varianceAnalysis(build, params, spread = 0.15, samples = 1000) {
   return { spread, samples, dmg: stats(dmgs), spent: stats(spents), profit: stats(profits) };
 }
 
-// Main optimizer. Finds the best (gear, skill allocation) combination.
-//
-// params — output of buildPresetParams
-// progressCallback(gearIdx, total, bestDmgSoFar) — optional progress hook
-//
-// Returns { bestBuild, elapsed, gearSetsCount, gearSetsPruned, gearSetsEvaluated,
-//           effectiveMin, effectiveMax, dominantSkill }
-export function runOptimizer(params, progressCallback) {
+const SWEEP_FOOD_TYPES = ['none', 'bread', 'meat', 'fish'];
+const SWEEP_AMMO_TYPES = ['light', 'ammo', 'heavy'];
+
+// Runs the optimizer for a single fixed food + ammo combination.
+function _runFixed(params, progressCallback) {
   const mp          = params.marketPrices;
   const food        = buildFood(mp)[params.foodType] ?? buildFood(mp).fish;
   const gearSets    = buildGearAndSets(mp.scrapPrice, params.gearTiers, params.rollMultiplier ?? 1,
                                        params.gearOverrides ?? null, params.forcedNoneSlots ?? null);
   const minSkills   = params.minSkills ?? {};
   const maxSkillsCap = { ...DEFAULT_PRESET_MAX_SKILLS, ...(params.maxSkills ?? {}) };
+  // When food provides no healing, hunger skill is pure SP waste — cap and floor both go to 0.
+  const effectiveMinSkills = food.inc === 0 ? { ...minSkills, hunger: 0 } : minSkills;
+  if (food.inc === 0) maxSkillsCap.hunger = 0;
 
   const dominant = SKILL_NAMES.includes(params.dominantSkill) ? params.dominantSkill : DOMINANT_DEFAULT;
 
@@ -96,13 +96,11 @@ export function runOptimizer(params, progressCallback) {
   for (const s of SKILL_NAMES) effMax[s] = maxSkillsCap[s] ?? MAX_SKILL_LEVEL;
   const domMax = effMax[dominant];
   for (const s of COMBAT_SKILLS) if (s !== dominant) effMax[s] = Math.min(effMax[s], domMax);
-  const prodMax = effMax.production;
-  for (const s of ECO_SKILLS) effMax[s] = Math.min(effMax[s], prodMax);
 
   // ─── Gear feasibility prune ──────────────────────────────────────────────────
   const svTmp        = {};
   const minSkillsFull = {};
-  for (const s of SKILL_NAMES) minSkillsFull[s] = minSkills[s] ?? 0;
+  for (const s of SKILL_NAMES) minSkillsFull[s] = effectiveMinSkills[s] ?? 0;
   const maxSkillsFull = effMax;
 
   const feasibleGear = [];
@@ -133,6 +131,8 @@ export function runOptimizer(params, progressCallback) {
   const spentLimit      = params.spentLimit;
   const minDmgPerDollar = params.minDmgPerExtraDollar;
 
+  const effectiveParams = { ...params, minSkills: effectiveMinSkills, maxSkills: maxSkillsCap };
+
   let best      = null;
   let gearSeen  = 0;
   let evaluated = 0;
@@ -145,7 +145,7 @@ export function runOptimizer(params, progressCallback) {
     if (progressCallback && (gi % 20 === 0 || gi === gearWithUB.length - 1))
       progressCallback(gearSeen, gearWithUB.length, best ? best.dmg : 0);
 
-    const sk = optimizeSP(params, gear, food);
+    const sk = optimizeSP(effectiveParams, gear, food);
     writeAttributes(sk, gear, svTmp);
     const r = evalBuild(svTmp, gear, params, food);
     evaluated++;
@@ -175,6 +175,8 @@ export function runOptimizer(params, progressCallback) {
     bestBuild.appliedSkillMin      = minSkills;
     bestBuild.appliedSkillMax      = maxSkillsCap;
     bestBuild.appliedDominantSkill = dominant;
+    bestBuild.foodType             = params.foodType;
+    bestBuild.ammoType             = params.ammoType;
   }
 
   return {
@@ -187,4 +189,42 @@ export function runOptimizer(params, progressCallback) {
     effectiveMax:      maxSkillsCap,
     dominantSkill:     dominant,
   };
+}
+
+// Main optimizer entry point. When foodType or ammoType is 'auto', sweeps all
+// combinations and returns the best result.
+//
+// progressCallback(gearIdx, total, bestDmgSoFar, comboInfo?) — optional progress hook
+// comboInfo: { combo, totalCombos, label } — present only during a sweep
+export function runOptimizer(params, progressCallback) {
+  const foods = params.foodType === 'auto' ? SWEEP_FOOD_TYPES : [params.foodType ?? 'fish'];
+  const ammos = params.ammoType === 'auto' ? SWEEP_AMMO_TYPES : [params.ammoType ?? 'light'];
+
+  if (foods.length === 1 && ammos.length === 1) {
+    return _runFixed({ ...params, foodType: foods[0], ammoType: ammos[0] }, progressCallback);
+  }
+
+  const combos    = foods.flatMap(f => ammos.map(a => ({ foodType: f, ammoType: a })));
+  const objective = params.objective ?? 'maxDmg';
+  let best        = null;
+
+  for (let i = 0; i < combos.length; i++) {
+    const { foodType, ammoType } = combos[i];
+    const comboInfo = { combo: i + 1, totalCombos: combos.length, label: foodType + ' · ' + ammoType };
+    const result = _runFixed(
+      { ...params, foodType, ammoType },
+      progressCallback ? (g, total, dmg) => progressCallback(g, total, dmg, comboInfo) : null,
+    );
+
+    if (!best || !best.bestBuild) {
+      best = result;
+    } else if (result.bestBuild) {
+      const better = objective === 'minSpent'
+        ? result.bestBuild.spent < best.bestBuild.spent
+        : result.bestBuild.dmg  > best.bestBuild.dmg;
+      if (better) best = result;
+    }
+  }
+
+  return best;
 }

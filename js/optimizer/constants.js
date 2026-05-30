@@ -8,7 +8,6 @@ export const COMBAT_SKILLS = new Set([
   'attack', 'precision', 'cChance', 'cDmg', 'armor', 'dodge', 'health', 'hunger',
 ]);
 
-export const ECO_SKILLS = new Set(['energy', 'enter']);
 
 export const DOMINANT_DEFAULT  = 'attack';
 export const MAX_SKILL_LEVEL   = 10;
@@ -48,10 +47,10 @@ export const DEFAULT_PRESET_MAX_SKILLS = {
   health:     6,
   hunger:     6,
   loot:       6,
-  enter:      0,
-  energy:     1,
-  production: 1,
-  companies:  5,
+  enter:      MAX_SKILL_LEVEL,
+  energy:     MAX_SKILL_LEVEL,
+  production: MAX_SKILL_LEVEL,
+  companies:  MAX_SKILL_LEVEL,
 };
 
 export const PRESET_DEFS = {

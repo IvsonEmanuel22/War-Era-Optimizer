@@ -76,7 +76,7 @@ export function evalBuild(skillValues, gear, params, food) {
 
   // ─── HP / survival ──────────────────────────────────────────────────────────
   const regenHP     = sv.health + (sv.health / 10) * hours;
-  const foodActions = Math.floor(sv.hunger + (sv.hunger / 10) * hours);
+  const foodActions = sv.hunger + Math.floor((sv.hunger / 10) * hours);
   const healPerFood = (food.inc / 100) * sv.health;
   const totalHP     = regenHP + foodActions * healPerFood;
   const initialHP   = sv.health + sv.hunger * healPerFood;

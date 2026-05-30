@@ -1,5 +1,5 @@
 import {
-  SKILL_NAMES, COMBAT_SKILLS, ECO_SKILLS,
+  SKILL_NAMES, COMBAT_SKILLS,
   DOMINANT_DEFAULT, MAX_SKILL_LEVEL,
 } from './constants.js';
 
@@ -9,7 +9,7 @@ export const SP_PER_PLAYER_LEVEL = 4;
 export const FULL_SKILL_COST     = (MAX_SKILL_LEVEL * (MAX_SKILL_LEVEL + 1)) / 2; // 55
 
 export const ALL_SKILLS    = SKILL_NAMES;
-export { COMBAT_SKILLS, ECO_SKILLS };
+export { COMBAT_SKILLS };
 
 // ─── SP math ─────────────────────────────────────────────────────────────────
 
@@ -72,7 +72,6 @@ export function getCombinations(
 
   // Reorder: dominant skill first, then remaining in SKILL_NAMES order.
   const order = [dominant, ...SKILL_NAMES.filter(s => s !== dominant)];
-  const prodIdx = order.indexOf('production');
 
   const triCost = Array.from({ length: MAX_SKILL_LEVEL + 1 }, (_, i) => (i * (i + 1)) / 2);
 
@@ -106,9 +105,6 @@ export function getCombinations(
     if (!noStructuralCaps) {
       if (COMBAT_SKILLS.has(skill) && skill !== dominant && current.length > 0) {
         ceiling = Math.min(ceiling, current[0]);  // current[0] is dominant level
-      }
-      if (ECO_SKILLS.has(skill) && current.length > prodIdx) {
-        ceiling = Math.min(ceiling, current[prodIdx]);
       }
     }
 

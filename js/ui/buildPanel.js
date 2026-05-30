@@ -301,7 +301,7 @@ function renderBuildResult(presetKey, userData, optResult) {
       bread: "Bread (+10%)",
       meat: "Meat (+15%)",
       fish: "Fish (+20%)",
-    }[presetDef.foodType],
+    }[bestBuild.foodType] ?? bestBuild.foodType,
     allowedTiers =
       OPT.GEAR_TIER_ORDER.filter((t) => presetDef.gearTiers[t]).join(" / ") || "—",
     params = OPT.buildPresetParams(presetKey, userData),
@@ -695,7 +695,7 @@ function renderMinMaxForm() {
   panel.innerHTML =
     '\n        <div class="build-panel mm-form">\n            <h3>🎯 Min-Max (real market)</h3>\n            <div class="gc-intro">\n                Uses real warera.io market data — live average prices fetched fresh from the\n                WarEra API each run (cached 5 min per session).\n                Tier picks are based on what gear actually costs on the current market.\n            </div>\n\n            <div class="mm-radio-row" id="mmPresetRow">\n                <label class="mm-radio selected"><input type="radio" name="mmPreset" value="sustainable" checked /> Sustainable</label>\n                <label class="mm-radio"><input type="radio" name="mmPreset" value="warEco" /> War-Eco</label>\n                <label class="mm-radio"><input type="radio" name="mmPreset" value="gearCheck" /> Gear Check</label>\n                <label class="mm-radio"><input type="radio" name="mmPreset" value="pillDebuff" /> Pill Debuff</label>\n            </div>\n            <div class="mm-pct-hint" id="mmLockedNote" style="display:none"></div>\n\n            <div class="opt-target-row">\n                <label for="mmLvlInput">Player level</label>\n                <input type="number" id="mmLvlInput" value="' +
     currentLvl +
-    '" step="1" min="1" max="100" />\n                <span class="opt-target-hint">SP available = level × 4</span>\n            </div>\n\n            <div class="opt-target-row" id="mmSuNetRow" style="display:none">\n                <label for="mmSuNetInput">Target net / day</label>\n                <span class="opt-target-prefix">$</span>\n                <input type="number" id="mmSuNetInput" value="0" step="1" />\n                <span class="opt-target-hint">min daily profit — 0 = break even</span>\n            </div>\n\n            <div class="opt-target-row" id="mmFoodRow" style="display:none">\n                <label for="mmFoodInput">Food</label>\n                <select id="mmFoodInput" style="padding:4px 8px;border-radius:4px">\n                    <option value="fish">Fish (best HP, $6.74)</option>\n                    <option value="meat">Meat (mid HP, $3.45)</option>\n                    <option value="bread">Bread (budget, $1.82)</option>\n                </select>\n            </div>\n\n            <div class="opt-target-row" id="mmFactoriesRow" style="display:none">\n                <label for="mmFactoriesInput">Active factories</label>\n                <input type="number" id="mmFactoriesInput" value="0" step="1" min="0" max="20" />\n                <span class="opt-target-hint">companies skill cap = factories - 2</span>\n            </div>\n\n            <div class="opt-target-row" id="mmNetRow" style="display:none">\n                <label for="mmNetInput">Target net / day</label>\n                <span class="opt-target-prefix">$</span>\n                <input type="number" id="mmNetInput" value="0" step="1" />\n                <span class="opt-target-hint">War-Eco only — default 80% of personal income</span>\n            </div>\n            <div id="mmNetWarn" class="mm-net-warn" style="display:none">\n                ⚠ Target net income / day is <b>WITHOUT</b> worker income. If you have workers,\n                you will earn that on top of this number.\n            </div>\n\n            <div class="opt-target-row" id="mmBountyRow" style="display:none">\n                <label for="mmBountyInput">Bounty ($ per 1000 dmg)</label>\n                <span class="opt-target-prefix">$</span>\n                <input type="number" id="mmBountyInput" value="' +
+    '" step="1" min="1" max="100" />\n                <span class="opt-target-hint">SP available = level × 4</span>\n            </div>\n\n            <div class="opt-target-row" id="mmSuNetRow" style="display:none">\n                <label for="mmSuNetInput">Target net / day</label>\n                <span class="opt-target-prefix">$</span>\n                <input type="number" id="mmSuNetInput" value="0" step="1" />\n                <span class="opt-target-hint">min daily profit — 0 = break even</span>\n            </div>\n\n            <div class="opt-target-row" id="mmFactoriesRow" style="display:none">\n                <label for="mmFactoriesInput">Active factories</label>\n                <input type="number" id="mmFactoriesInput" value="0" step="1" min="0" max="20" />\n                <span class="opt-target-hint">companies skill cap = factories - 2</span>\n            </div>\n\n            <div class="opt-target-row" id="mmNetRow" style="display:none">\n                <label for="mmNetInput">Target net / day</label>\n                <span class="opt-target-prefix">$</span>\n                <input type="number" id="mmNetInput" value="0" step="1" />\n                <span class="opt-target-hint">War-Eco only — default 80% of personal income</span>\n            </div>\n            <div id="mmNetWarn" class="mm-net-warn" style="display:none">\n                ⚠ Target net income / day is <b>WITHOUT</b> worker income. If you have workers,\n                you will earn that on top of this number.\n            </div>\n\n            <div class="opt-target-row" id="mmBountyRow" style="display:none">\n                <label for="mmBountyInput">Bounty ($ per 1000 dmg)</label>\n                <span class="opt-target-prefix">$</span>\n                <input type="number" id="mmBountyInput" value="' +
     _gearCheck.bounty +
     '" step="0.01" min="0" />\n                <span class="opt-target-hint">e.g. 0.15 = $0.15/1k dmg</span>\n            </div>\n\n            <div class="opt-target-row" id="mmCountryBonusRow" style="display:none">\n                <label for="mmCountryBonusInput">Country dmg bonus</label>\n                <input type="number" id="mmCountryBonusInput" value="' +
     _gearCheck.countryBonus +
@@ -706,15 +706,6 @@ function renderMinMaxForm() {
     '" step="1" min="1" max="24" />\n                <span class="opt-target-hint">debuff period (damage fixed at −' +
     PILL_DEBUFF_DMG_PENALTY_PCT +
     '%)</span>\n            </div>\n\n            <button type="button" class="opt-be-btn" id="mmRunBtn">Run Min-Max simulation →</button>\n        </div>';
-  (function () {
-    var _ammoRow = document.createElement("div");
-    _ammoRow.className = "opt-target-row";
-    _ammoRow.style.marginTop = "8px";
-    _ammoRow.innerHTML =
-      '<label style="min-width:130px">Ammo type</label><select id="mmAmmoTypeSelect" style="padding:4px 8px;border-radius:4px"><option value="light">Light ammo (+10%, $0.17)</option><option value="ammo">Ammo (+20%, $0.69)</option><option value="heavy">Heavy ammo (+40%, $2.49)</option></select>';
-    var _b = document.getElementById("mmRunBtn");
-    if (_b && _b.parentNode) _b.parentNode.insertBefore(_ammoRow, _b);
-  })();
   (function () {
     var _r = document.createElement("div");
     _r.className = "opt-target-row";
@@ -734,7 +725,6 @@ function renderMinMaxForm() {
     gcNetRow = document.getElementById("mmGcNetRow"),
     hoursRow = document.getElementById("mmHoursRow"),
     suNetRow = document.getElementById("mmSuNetRow"),
-    foodRow = document.getElementById("mmFoodRow"),
     factoriesRow = document.getElementById("mmFactoriesRow"),
     lockedNote = document.getElementById("mmLockedNote"),
     playerName = state.lastAnalysis?.user?.username || "(loaded player)",
@@ -752,7 +742,6 @@ function renderMinMaxForm() {
         netWarn.style.display = preset === "warEco" ? "block" : "none";
       const isSustainable = preset === "sustainable";
       if (suNetRow) suNetRow.style.display = isSustainable ? "flex" : "none";
-      if (foodRow) foodRow.style.display = isSustainable ? "flex" : "none";
       if (factoriesRow) factoriesRow.style.display = isSustainable ? "flex" : "none";
       ((bountyRow.style.display =
         preset === "gearCheck" || preset === "pillDebuff" ? "flex" : "none"),
@@ -817,7 +806,6 @@ function renderMinMaxForm() {
             ? Math.floor(rawHours)
             : 16,
         suTargetNet: (() => { const v = Number(document.getElementById("mmSuNetInput")?.value); return Number.isFinite(v) ? v : 0; })(),
-        foodType: document.getElementById("mmFoodInput")?.value ?? "fish",
         factories: (() => { const v = Math.floor(Number(document.getElementById("mmFactoriesInput")?.value)); return v >= 0 ? v : null; })(),
       }),
         preset === "gearCheck" &&
@@ -827,9 +815,6 @@ function renderMinMaxForm() {
         preset === "pillDebuff" &&
           ((_pillDebuff.bounty = _minMaxConfig.bounty),
           (_pillDebuff.hours = _minMaxConfig.hours)),
-        (_minMaxConfig.ammoType = (
-          document.getElementById("mmAmmoTypeSelect") || { value: "light" }
-        ).value),
         (_minMaxConfig.battleBonus = Number(
           (document.getElementById("mmBattleBonusInput") || { value: "90" })
             .value,
@@ -874,6 +859,7 @@ async function runMinMaxBuild() {
           "/day"));
     }
   }
+  panel.innerHTML = '<div class="build-panel"><h3>🎯 Min-Max \xB7 ' + presetLabel + '</h3><div class="build-loading">Fetching live market prices…</div></div>';
   const { overrides: gearOverrides, missing } = await buildPriceOverrides(allowedTiers);
   const userData = {
       ...baseUserData,
@@ -884,7 +870,6 @@ async function runMinMaxBuild() {
     };
   if (cfg.preset === "sustainable") {
     userData.spentLimitOverride = -(cfg.suTargetNet ?? 0);
-    if (cfg.foodType) userData.foodTypeOverride = cfg.foodType;
     if (cfg.factories != null && Number.isFinite(cfg.factories))
       userData.companyCount = cfg.factories;
   }
@@ -894,7 +879,6 @@ async function runMinMaxBuild() {
   cfg.preset === "gearCheck" &&
     cfg.gearCheckNet != null &&
     (userData.spentLimitOverride = -cfg.gearCheckNet);
-  if (cfg.ammoType) userData.ammoType = cfg.ammoType;
   if (Number.isFinite(cfg.battleBonus))
     userData.battleBonus = 1 + cfg.battleBonus / 100;
   const title = "🎯 Min-Max \xB7 " + presetLabel + " \xB7 live prices",
@@ -935,7 +919,10 @@ async function runMinMaxBuild() {
         barEl = document.getElementById("optProgressBar"),
         labelEl = document.getElementById("optProgressLabel");
       if (barEl) barEl.style.width = pct + "%";
-      if (labelEl)
+      if (labelEl) {
+        const comboStr = msg.totalCombos > 1
+          ? " · " + msg.label + " (" + msg.combo + "/" + msg.totalCombos + ")"
+          : "";
         labelEl.textContent =
           "Optimizing " +
           msg.g +
@@ -944,9 +931,9 @@ async function runMinMaxBuild() {
           " gear sets · " +
           (msg.elapsed / 1000).toFixed(1) +
           "s" +
-          (msg.dmg
-            ? " · best dmg " + Math.round(msg.dmg).toLocaleString()
-            : "");
+          (msg.dmg ? " · best dmg " + Math.round(msg.dmg).toLocaleString() : "") +
+          comboStr;
+      }
     } else
       msg.type === "result" &&
         (_buildCache.set(cacheKey, msg.result),
@@ -1537,7 +1524,7 @@ function renderMinMaxResult(presetKey, userData, optResult, opts) {
       bread: "Bread (+10%)",
       meat: "Meat (+15%)",
       fish: "Fish (+20%)",
-    }[params.foodType],
+    }[bestBuild.foodType] ?? bestBuild.foodType,
     gearCost = ["gun", "helmet", "chest", "pant", "glove", "boot"].reduce(
       (sum, slot) =>
         sum + (bestBuild.gear[slot]?.buyPrice || 0),
@@ -1574,7 +1561,7 @@ function renderMinMaxResult(presetKey, userData, optResult, opts) {
     gearCost.toFixed(2) +
     '</div></div>\n            </div>\n\n            <div class="opt-section-title">Gear (real-market prices)</div>\n            ' +
     _mmConsumablesBox(
-      params.foodType,
+      bestBuild.foodType,
       params.usePill,
       bestBuild.gear.gun.type,
     ) +
@@ -1741,7 +1728,7 @@ function _mmDoRollSearch(bestBuild, params) {
     ];
   }
   const foodMap = OPT.buildFood(params.marketPrices),
-    food = foodMap[params.foodType] ?? foodMap.fish,
+    food = foodMap[bestBuild.foodType] ?? foodMap.fish,
     skills = bestBuild.skills,
     attrs = {},
     objective = params.objective ?? "maxDmg",
@@ -1899,7 +1886,7 @@ function _mmRenderRollSearchResult(bestBuild, searchResult, params, elapsed) {
     elapsed +
     ' ms</b>\n            </div>\n            <div class="opt-section-title" style="margin-top:12px">Roll targets — what to shop for</div>\n            ' +
     _mmConsumablesBox(
-      params.foodType,
+      bestBuild.foodType,
       params.usePill,
       best.gear.gun.type,
     ) +
@@ -2159,7 +2146,7 @@ function renderMinMaxBreakEvenResult(
     bestBuild.startingCost.toFixed(2) +
     "</div>\n                </div>\n            </div>\n            " +
     _mmConsumablesBox(
-      params.foodType,
+      bestBuild.foodType,
       params.usePill,
       bestBuild.gear.gun.type,
     ) +

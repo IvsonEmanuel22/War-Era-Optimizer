@@ -1,23 +1,15 @@
-import { SKILL_NAMES, COMBAT_SKILLS, ECO_SKILLS, MAX_SKILL_LEVEL, DEFAULT_PRESET_MAX_SKILLS } from './constants.js';
+import { SKILL_NAMES, COMBAT_SKILLS, MAX_SKILL_LEVEL, DEFAULT_PRESET_MAX_SKILLS } from './constants.js';
 import { SP_PER_PLAYER_LEVEL } from './SkillPoints.js';
 import { writeAttributes, evalBuild } from './DamageFormula.js';
 
 // Returns true if `skill` can be lowered without cascading a structural cap violation.
-// Rules:
-//   - dominant: skip if any other combat skill sits at the same level (lowering would invalidate it)
-//   - production: skip if any eco skill sits at the same level (same reason)
-// Both cases deferred ("skip for now") — no cascade implemented.
+// Only combat skills below the dominant are blocked from exceeding it.
 function _canLower(skill, dominant, L, mins, noStructCaps) {
   if (L[skill] <= (mins[skill] ?? 0)) return false;
   if (noStructCaps) return true;
   if (skill === dominant) {
     for (const s of COMBAT_SKILLS) {
       if (s !== dominant && L[s] === L[dominant]) return false;
-    }
-  }
-  if (skill === 'production') {
-    for (const s of ECO_SKILLS) {
-      if (L[s] === L.production) return false;
     }
   }
   return true;
@@ -28,7 +20,6 @@ function _capFor(skill, dominant, maxs, L, noStructCaps) {
   const explicit = maxs[skill] ?? MAX_SKILL_LEVEL;
   if (noStructCaps) return explicit;
   if (COMBAT_SKILLS.has(skill) && skill !== dominant) return Math.min(explicit, L[dominant]);
-  if (ECO_SKILLS.has(skill)) return Math.min(explicit, L.production);
   return explicit;
 }
 
