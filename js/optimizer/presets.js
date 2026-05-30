@@ -54,8 +54,11 @@ export function buildPresetParams(presetName, userData = {}) {
     objective:           userData.objectiveOverride ?? 'maxDmg',
     companyProfit:       userData.avgAePerCompany ?? 0,
     salary:              userData.employer?.netWage  ?? 0,
-    ppSelfWorkBonus:     userData.employer ? 1 + userData.employer.productionBonus / 100 : 1,
-    ppSelfWorkPrice:     userData.employer?.netWage  ?? 0,
+    // ppSelfWorkPrice agora carrega a margem real por PP da melhor empresa do jogador
+    // (1 + co.bonus/100) * (sellPrice - matCost) / co.recipe.pp — não a netWage do empregador.
+    // Bônus de produção já está embutido na margem, então ppSelfWorkBonus = 1.
+    ppSelfWorkBonus:     1,
+    ppSelfWorkPrice:     userData.bestEntrepProfitPerPP ?? 0,
     workersProfit:       userData.workersProfit ?? 0,
     minSkills,
     maxSkills,

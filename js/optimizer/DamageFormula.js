@@ -111,7 +111,7 @@ export function evalBuild(skillValues, gear, params, food) {
     normalRounds * effectiveAtk +
     critRounds   * ((100 + totalCDmg) / 100) * effectiveAtk;
 
-  const battleBonus = params.battleBonus ?? (params.rankBonus * params.countryBonus);
+  const battleBonus = params.battleBonus ?? (params.countryBonus ?? 1);
   const dmg = rawDmg * battleBonus * dmgMult;
 
   // ─── Costs ───────────────────────────────────────────────────────────────────

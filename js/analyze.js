@@ -17,12 +17,17 @@ export async function analyze(userId, usernameArg) {
   clearDebug();
   _buildCache.clear();
 
+  const onCompanyProgress = (partial, loaded, total) => {
+    if (partial.companies.length > 0) render(partial);
+    setStatus(`Empresa ${loaded}/${total} — ${partial.user?.username || query}`);
+  };
+
   try {
     let data;
     if (userId) {
-      data = await fetchByUserId(userId);
+      data = await fetchByUserId(userId, { onCompanyProgress });
     } else {
-      data = await fetchDirect(query);
+      data = await fetchDirect(query, { onCompanyProgress });
     }
 
     if (data.error) { setStatus(data.error, "error"); return; }
@@ -152,14 +157,15 @@ export function render(data) {
     employer: economy.employer,
     economy,
     totals: {
-      aeNet:           totals.totalAeNet,
-      workersNet:      totals.totalWkNet,
-      entrep:          totals.entrepProfit,
-      energy:          totals.energyProfit,
-      grand:           totals.grand,
-      avgPerCompany:   totals.avg,
-      avgAePerCompany: totals.avgAe,
-      companyCount:    totals.count,
+      aeNet:                 totals.totalAeNet,
+      workersNet:            totals.totalWkNet,
+      entrep:                totals.entrepProfit,
+      bestEntrepProfitPerPP: totals.bestEntrepProfitPerPP,
+      energy:                totals.energyProfit,
+      grand:                 totals.grand,
+      avgPerCompany:         totals.avg,
+      avgAePerCompany:       totals.avgAe,
+      companyCount:          totals.count,
     },
   };
 

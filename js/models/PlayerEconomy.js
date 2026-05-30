@@ -205,6 +205,18 @@ export class PlayerEconomy {
     return (this.#bestEntrepCache = best);
   }
 
+  // Margem entrep por PP da melhor empresa — fator escalonável por (entrep/10) * production * 2.4.
+  // Clampa a 0: se a melhor margem é negativa, o jogador não faria entrep, e a renda é 0.
+  get bestEntrepProfitPerPP() {
+    let best = 0;
+    for (const co of this.companies) {
+      if (!co.recipe || !co.active) continue;
+      const margin = (1 + co.bonus.total / 100) * (co.sellPrice - this.matCostFor(co)) / co.recipe.pp;
+      if (margin > best) best = margin;
+    }
+    return best;
+  }
+
   // Ajuste FIFO de output por item produzido pelo trabalhador em fábricas RAW.
   // Produtoras cujo output é consumido internamente têm parte da receita descontada
   // ao custo médio interno. Este valor é subtraído do netDay individual do worker
@@ -244,11 +256,12 @@ export class PlayerEconomy {
     const count       = this.companies.filter(co => co.recipe).length;
     const entrepProfit = this.bestEntrep?.profit  ?? 0;
     const energyProfit = this.energyProfit         ?? 0;
+    const bestEntrepProfitPerPP = this.bestEntrepProfitPerPP;
 
     return {
       totalAeNet, activeAeNet, activeAeCount,
       totalWkNet, totalWages, totalWorkers,
-      entrepProfit, energyProfit,
+      entrepProfit, energyProfit, bestEntrepProfitPerPP,
       total:        totalAeNet + totalWkNet,
       grand:        totalAeNet + totalWkNet + entrepProfit + energyProfit,
       activeGrand:  activeAeNet + totalWkNet + entrepProfit + energyProfit,

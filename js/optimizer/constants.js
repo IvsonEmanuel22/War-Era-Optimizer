@@ -63,7 +63,7 @@ export const PRESET_DEFS = {
     minSkills: {
       attack: 2, precision: 2, cChance: 1, cDmg: 1, armor: 1,
       dodge: 2, health: 1, hunger: 1, loot: 2, enter: 0, energy: 0,
-      production: 0, companies: 4,
+      production: 0, companies: 0,
     },
     maxSkills: {},
     spentLimit: () => -15,
@@ -78,7 +78,7 @@ export const PRESET_DEFS = {
     minSkills: {
       attack: 1, precision: 1, cChance: 0, cDmg: 0, armor: 0,
       dodge: 0, health: 0, hunger: 0, loot: 2, enter: 0, energy: 0,
-      production: 0, companies: 4,
+      production: 0, companies: 0,
     },
     maxSkills: {},
     spentLimit: ({ entrep, energy, aeNet }) => -Math.abs(entrep + energy + aeNet) * 0.8,

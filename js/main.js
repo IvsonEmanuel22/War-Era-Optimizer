@@ -1,12 +1,9 @@
 import { ALLOWED_COUNTRY_CODES } from './config.js';
-import { setGearSnapshotListener, loadGearSnapshot } from './api.js';
 import { $ } from './utils.js';
 import { analyze } from './analyze.js';
 import { initUserSearch } from './ui/userSearch.js';
-import { refreshMinMaxButtonState, initBuildButtons } from './ui/buildPanel.js';
+import { initBuildButtons } from './ui/buildPanel.js';
 
-setGearSnapshotListener(refreshMinMaxButtonState);
-loadGearSnapshot().catch(() => {});
 $('goBtn').addEventListener('click', () => analyze());
 initUserSearch();
 initBuildButtons();
